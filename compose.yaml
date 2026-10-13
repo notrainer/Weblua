@@ -1,0 +1,18 @@
+services:
+  weblua:
+    image: ${WEBLUA_IMAGE:-ghcr.io/notrainer/weblua:latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEBLUA_PORT:-8085}:80"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

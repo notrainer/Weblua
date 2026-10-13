@@ -7,6 +7,11 @@ as static files. Source-only project sharing uses the URL fragment, so there is 
 backend or database to provision. Optional Plausible and Sentry integrations can still
 send sanitized usage/error telemetry when explicitly configured.
 
+The fork also publishes a ready-to-run `ghcr.io/notrainer/weblua:latest` image
+for AMD64 and ARM64. Prefer Coolify's Docker Image resource or the included
+[Compose deployment](deployment.md) when no custom build arguments are needed.
+The image serves port 80 and includes an HTTP health check.
+
 ## Prerequisites
 
 - A running Coolify instance (v4) with a server/resource pool attached.
@@ -23,7 +28,7 @@ In your Coolify project/environment:
 
 1. **+ New Resource → Application**.
 2. Choose your source: **Public Repository** (paste the GitHub URL) or select your
-   connected **GitHub App** and pick `PytechNo/Weblua`.
+   connected **GitHub App** and pick `notrainer/Weblua`.
 3. Branch: `main`.
 
 ## 2. Pick a build pack
@@ -69,10 +74,10 @@ resolve to a patch version older than Vite/Rolldown requires.
 
 ## 3. Environment variables (build-time!)
 
-Vite inlines `VITE_*` variables **at build time**, not runtime. In Coolify, add these
-under the application's **Environment Variables**, and make sure they're marked
-available during the build step (Coolify does this automatically for the Static/Dockerfile
-build packs since the build runs inside the same env context):
+Vite inlines `VITE_*` variables **at build time**, not runtime. For the Dockerfile
+build pack, pass these as build arguments matching the Dockerfile's `ARG`
+declarations. For Nixpacks, make them available during the build step. Setting
+runtime environment variables on the published GHCR image does not enable them:
 
 | Variable | Required | Purpose |
 |---|---|---|
@@ -134,6 +139,13 @@ link fragment (`/playground#c=2...`) and restored in the browser. Generated ifra
 fallback, without a project backend or database.
 
 ## Troubleshooting
+
+For a desktop-only preflight, follow the
+[local Podman instructions](../README.md#local-podman-container). They bind nginx
+to `127.0.0.1:8085`, include a container health check, and show how to bypass stale
+Docker Hub credentials for public base-image pulls without changing saved logins.
+Verify `/`, `/playground`, and `/embed` return HTTP 200, then run an example in the
+playground before proceeding with a hosted deployment.
 
 | Symptom | Likely cause |
 |---|---|

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-slim AS build
+FROM docker.io/library/node:22-slim AS build
 WORKDIR /app
 
 # package-lock.json is written by npm 11. Node 22 bundles npm 10, whose `npm ci`
@@ -12,9 +12,15 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+ARG VITE_PLAUSIBLE_DOMAIN=""
+ARG VITE_SENTRY_DSN=""
 RUN npm run build
 
-FROM nginx:alpine
+FROM docker.io/library/nginx:alpine
+LABEL org.opencontainers.image.source="https://github.com/notrainer/Weblua" \
+      org.opencontainers.image.licenses="MIT"
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1/

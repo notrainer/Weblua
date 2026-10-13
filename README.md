@@ -251,11 +251,68 @@ static output with nginx:
 
 ```sh
 docker build -t weblua .
-docker run --rm -p 8080:80 weblua
+docker run --rm -p 127.0.0.1:8085:80 weblua
 ```
 
-Open `http://localhost:8080`. The nginx configuration serves hashed assets with
+Open `http://127.0.0.1:8085`. The nginx configuration serves hashed assets with
 long-lived caching and provides route fallback for `/playground` and `/embed`.
+
+### Published image and Compose
+
+The fork at <https://github.com/notrainer/Weblua> publishes
+`ghcr.io/notrainer/weblua:latest` for Linux AMD64 and ARM64. The image workflow
+runs an image build, Compose validation, a container health check, and HTTP
+checks for all three routes before publishing on pushes to `main` or manual
+runs on `main`. Pull requests run these checks without publishing. GitHub Actions
+use current release version tags without commit SHA pins; registry authentication
+uses `GITHUB_TOKEN`.
+
+The included [`compose.yaml`](compose.yaml) pulls this published image, binds
+to loopback, and checks nginx every 30 seconds:
+
+```sh
+podman compose pull
+podman compose up -d --pull never --wait --wait-timeout 60
+podman compose ps
+```
+
+Open <http://127.0.0.1:8085/playground>. Docker Compose also works with the same
+file. `WEBLUA_PORT` changes the local port; `WEBLUA_IMAGE` selects an alternative
+image for local validation or rollback. The container has a read-only root
+filesystem and temporary nginx cache/PID directories. Browser projects remain
+in IndexedDB, so keep the same browser and URL when updating the container.
+
+See [`docs/deployment.md`](docs/deployment.md) for registry access, update checks,
+and rollback. The published image leaves optional telemetry disabled; integrations
+require a custom build with the corresponding `VITE_*` build arguments.
+
+### Local Podman container
+
+For desktop-only access, build and start a detached container on loopback:
+
+```sh
+podman build --format=docker -t weblua .
+podman run -d --name weblua --restart=unless-stopped \
+  -p 127.0.0.1:8085:80 weblua
+podman healthcheck run weblua
+```
+
+Open <http://127.0.0.1:8085/playground>. On macOS, start the Podman machine
+first if it is stopped. `--format=docker` preserves the Dockerfile health check;
+Podman's default OCI format omits it. Use `podman stop weblua` and
+`podman start weblua` to stop and resume the existing container. Projects are saved in the browser's
+IndexedDB; keep the same browser and URL to access them again.
+
+If pulling `node:22-slim` or `nginx:alpine` fails with `invalid username/password`,
+saved Docker Hub credentials may be stale. Both images are public, so retry with
+a temporary empty auth file without changing your saved logins:
+
+```sh
+weblua_authfile=$(mktemp)
+printf '%s\n' '{"auths":{}}' > "$weblua_authfile"
+podman build --authfile "$weblua_authfile" --format=docker --pull=always -t weblua .
+rm "$weblua_authfile"
+```
 
 For a complete hosted deployment walkthrough, see
 [`docs/coolify-deployment.md`](docs/coolify-deployment.md).
@@ -300,7 +357,8 @@ VITE_SENTRY_DSN=https://example@sentry.io/project
 ```
 
 Both are optional and disabled when empty. Because Vite inlines them at build time,
-changing either value requires a rebuild.
+changing either value requires a rebuild. The Dockerfile accepts both as build
+arguments, for example `--build-arg VITE_PLAUSIBLE_DOMAIN=example.com`.
 
 ## License
 
