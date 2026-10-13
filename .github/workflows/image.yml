@@ -61,7 +61,14 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          # Docker format retains HEALTHCHECK; OCI attestations require OCI manifests.
+          outputs: type=image,oci-mediatypes=false
+          provenance: false
           tags: ghcr.io/notrainer/weblua:latest
           labels: org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Verify published image health check
+        run: |
+          docker pull ghcr.io/notrainer/weblua:latest
+          docker image inspect ghcr.io/notrainer/weblua:latest | jq --exit-status '.[0].Config.Healthcheck.Test != null'

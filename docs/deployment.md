@@ -8,6 +8,11 @@ to `main` publish automatically; **Actions → Build and publish image → Run w
 current action release tags without SHA pinning, and grants package write access
 only to the publishing job. No additional registry secret is needed in CI.
 
+The registry export uses Docker manifest/config media types to retain the
+embedded `HEALTHCHECK`. OCI provenance attachments are disabled because they
+require OCI manifests. Source and revision labels identify the repository and
+commit, and CI pulls the published image to verify its health-check metadata.
+
 ## Start locally
 
 On macOS, ensure the Podman machine is running. `podman compose` needs a Compose
